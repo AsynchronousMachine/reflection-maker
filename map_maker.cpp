@@ -18,7 +18,9 @@ auto ModuleClassMatcher = cxxRecordDecl(hasMethod(hasName("deserialize")), hasMe
 auto ModuleInstanceMatcher = varDecl(hasType(ModuleClassMatcher)).bind("moduleInstance");
 
 std::unordered_multimap<std::string, std::string> DOs; // key: class, value: DO
+std::unordered_map<std::string, std::string> DO_Datatypes; // key: class, value: DO type
 std::unordered_multimap<std::string, std::string> Links; // key: class, value: link
+std::unordered_map<std::string, std::string> Link_Datatypes; // key: class, value: Link type
 std::unordered_map<std::string, std::string> ModuleInstances; // key: variable, value: class
 
 class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback
@@ -35,9 +37,11 @@ public:
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("DO")) {
 			DOs.emplace(fd->getParent()->getNameAsString(), fd->getNameAsString());
+			DO_Datatypes.emplace(fd->getNameAsString(), fd->getType().getAsString());
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("link")) {
 			Links.emplace(fd->getParent()->getNameAsString(), fd->getNameAsString());
+			Link_Datatypes.emplace(fd->getNameAsString(), fd->getType().getAsString());
 		}
 	}
 };
@@ -63,6 +67,7 @@ int main(int argc, const char **argv)
 	fs.open("global_reflection.h", std::fstream::out);
 
 	fs << "#pragma once" << std::endl
+		<< "#include <map>" << std::endl
 		<< "#include <unordered_map>" << std::endl
 		<< "#include <functional>" << std::endl
 		<< std::endl
@@ -75,6 +80,7 @@ int main(int argc, const char **argv)
 		<< "using doset_map = std::unordered_map<std::string, std::function<void(const boost::any)>>;" << std::endl
 		<< "using registerlink_map = std::unordered_map<std::string, std::function<void(std::string, boost::any, boost::any)>>;" << std::endl
 		<< "using unregisterlink_map = std::unordered_map<std::string, std::function<void(std::string, boost::any)>>;" << std::endl
+		<< "using print_module_map = std::map<std::string, std::string>;" << std::endl
 		<< std::endl
 		<< "extern const module_name_map module_names;" << std::endl
 		<< "extern const name_module_map modules;" << std::endl
@@ -82,7 +88,8 @@ int main(int argc, const char **argv)
 		<< "extern const name_dataobject_map dos;" << std::endl
 		<< "extern const doset_map do_set;" << std::endl
 		<< "extern const registerlink_map set_links;" << std::endl
-		<< "extern const unregisterlink_map clear_links;" << std::endl;
+		<< "extern const unregisterlink_map clear_links;" << std::endl
+		<< "extern const print_module_map print_modules;" << std::endl;
 
 	fs.close();
 
@@ -168,8 +175,28 @@ int main(int argc, const char **argv)
 	}
 	fs << "};" << std::endl << std::endl;
 
-	fs.close();
+	//map for sorted order
+	fs << "const print_module_map print_modules" << std::endl << "{" << std::endl;
+	for (auto &ModuleInstance : ModuleInstances)
+	{
+		fs << "\t{\"" + ModuleInstance.first + "\",\"" + ModuleInstance.second + "::" + ModuleInstance.first + "\\n";
 
+		auto range = DOs.equal_range(ModuleInstance.second);
+		for (auto it = range.first; it != range.second; ++it)
+		{
+			fs << "  |> " << DO_Datatypes.at(it->second) << " " << it->second + "\\n";
+		}
+		auto range2 = Links.equal_range(ModuleInstance.second);
+		for (auto it = range2.first; it != range2.second; ++it)
+		{
+			fs << "  |> " << Link_Datatypes.at(it->second) << " " << it->second + "\\n";
+		}
+
+		fs << "\"}," << std::endl;
+	}
+	fs << "};" << std::endl << std::endl;
+
+	fs.close();
 
 	return Result;
 }
