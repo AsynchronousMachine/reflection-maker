@@ -5,7 +5,7 @@
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <llvm/Support/CommandLine.h>
 #include <vector>
-#include <unordered_map>
+#include <utility>
 #include <string>
 #include <fstream>
 
@@ -17,11 +17,10 @@ auto LinkFieldMatcher = fieldDecl(isPublic(), hasType(recordDecl(hasName("Link")
 auto ModuleClassMatcher = cxxRecordDecl(hasMethod(hasName("deserialize")), hasMethod(hasName("serialize")), anyOf(has(DOFieldMatcher), has(LinkFieldMatcher))).bind("moduleClass");
 auto ModuleInstanceMatcher = varDecl(hasType(ModuleClassMatcher)).bind("moduleInstance");
 
-std::unordered_multimap<std::string, std::string> DOs; // key: class, value: DO
-std::unordered_map<std::string, std::string> DO_Datatypes; // key: class, value: DO type
-std::unordered_multimap<std::string, std::string> Links; // key: class, value: link
-std::unordered_map<std::string, std::string> Link_Datatypes; // key: class, value: Link type
-std::unordered_map<std::string, std::string> ModuleInstances; // key: variable, value: class
+//map should be sorted for print_modules output
+std::multimap<std::string, std::pair<std::string, std::string>> DOs; // key: module class name, value: DO as pair of instance name and datatype
+std::multimap<std::string, std::pair<std::string, std::string>> Links; // key: module class name, value: link as pair of instance name and datatype
+std::map<std::string, std::string> ModuleInstances; // key: variable, value: module class name
 
 class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback
 {
@@ -36,12 +35,10 @@ public:
 			}
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("DO")) {
-			DOs.emplace(fd->getParent()->getNameAsString(), fd->getNameAsString());
-			DO_Datatypes.emplace(fd->getNameAsString(), fd->getType().getAsString());
+			DOs.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString()));
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("link")) {
-			Links.emplace(fd->getParent()->getNameAsString(), fd->getNameAsString());
-			Link_Datatypes.emplace(fd->getNameAsString(), fd->getType().getAsString());
+			Links.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString()));
 		}
 	}
 };
@@ -123,7 +120,7 @@ int main(int argc, const char **argv)
 		auto range = DOs.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second + "\", &" + ModuleInstance.first + "." + it->second + "}," << std::endl;
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", &" + ModuleInstance.first + "." + it->second.first + "}," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;
@@ -135,7 +132,7 @@ int main(int argc, const char **argv)
 		auto range = DOs.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "\t{&" + ModuleInstance.first + "." + it->second + ", \"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second + "\"}," << std::endl;
+			fs << "\t{&" + ModuleInstance.first + "." + it->second.first + ", \"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\"}," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;
@@ -147,7 +144,7 @@ int main(int argc, const char **argv)
 		auto range = DOs.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second + "\", [](const boost::any &a) {" + ModuleInstance.first + "." + it->second + ".set(a); } }," << std::endl;
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](const boost::any &a) {" + ModuleInstance.first + "." + it->second.first + ".set(a); } }," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;
@@ -158,7 +155,7 @@ int main(int argc, const char **argv)
 		auto range = Links.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second + "\", [](std::string name, boost::any a1, boost::any a2) {" + ModuleInstance.first + "." + it->second + ".set(name, a1, a2); } }," << std::endl;
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](std::string name, boost::any a1, boost::any a2) {" + ModuleInstance.first + "." + it->second.first + ".set(name, a1, a2); } }," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;
@@ -170,7 +167,7 @@ int main(int argc, const char **argv)
 		auto range = Links.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second + "\", [](std::string name, boost::any a) {" + ModuleInstance.first + "." + it->second + ".clear(name, a); } }," << std::endl;
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](std::string name, boost::any a) {" + ModuleInstance.first + "." + it->second.first + ".clear(name, a); } }," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;
@@ -184,12 +181,12 @@ int main(int argc, const char **argv)
 		auto range = DOs.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "  |> " << DO_Datatypes.at(it->second) << " " << it->second + "\\n";
+							fs << "  |> " << it->second.second << " " << it->second.first + "\\n";
 		}
 		auto range2 = Links.equal_range(ModuleInstance.second);
 		for (auto it = range2.first; it != range2.second; ++it)
 		{
-			fs << "  |> " << Link_Datatypes.at(it->second) << " " << it->second + "\\n";
+							fs << "  |> " << it->second.second << " " << it->second.first + "\\n";
 		}
 
 		fs << "\"}," << std::endl;
