@@ -4,6 +4,7 @@
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <llvm/Support/CommandLine.h>
+#include <set>
 #include <vector>
 #include <utility>
 #include <string>
@@ -22,6 +23,18 @@ std::multimap<std::string, std::pair<std::string, std::string>> DOs; // key: mod
 std::multimap<std::string, std::pair<std::string, std::string>> Links; // key: module class name, value: link as pair of instance name and datatype
 std::map<std::string, std::string> ModuleInstances; // key: variable, value: module class name
 
+void replaceAll(std::string &s, const std::string &search, const std::string &replace)
+{
+	for (size_t pos = 0; ; pos += replace.length()) {
+		// Locate the substring to replace
+		pos = s.find(search, pos);
+		if (pos == std::string::npos) break;
+		// Replace by erasing and inserting
+		s.erase(pos, search.length());
+		s.insert(pos, replace);
+	}
+};
+
 class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback
 {
 public:
@@ -35,7 +48,12 @@ public:
 			}
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("DO")) {
-			DOs.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString()));
+			std::string type = fd->getType().getAsString();
+			if (type.find("_Bool") > 0)
+			{
+				replaceAll(type, "_Bool", "bool");
+			}
+			DOs.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), type));
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("link")) {
 			Links.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString()));
@@ -64,27 +82,45 @@ int main(int argc, const char **argv)
 	fs.open("global_reflection.h", std::fstream::out);
 
 	fs << "#pragma once" << std::endl
+		<< "#include <boost/variant.hpp>" << std::endl
 		<< "#include \"asm.hpp\"" << std::endl
 		<< std::endl
+		<< "struct EmptyDataobject : boost::blank" << std::endl
+		<< "{" << std::endl
+		<< "    const std::string serialize(rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator) { return \"!!!Will never be used!!!\"; };" << std::endl
+		<< "    const void deserialize(rapidjson::Value& value) {};" << std::endl
+		<< "    template <class Visitor>" << std::endl
+		<< "    const int get(Visitor visitor) { return 0; }; // !!!Will never be used!!!" << std::endl
+		<< "};" << std::endl
+		<< std::endl
+		<< "using dataobjects = boost::variant<EmptyDataobject&";
+	//print all Dataobject types
+	std::set<std::string> myset;
+
+	for (const auto value : DOs)
+	{
+		myset.insert(value.second.second);
+	}
+	for (const std::string type : myset)
+	{
+		fs << ", " << type << "&";
+	}
+	fs << ">;" << std::endl
 		<< "using module_name_map = std::unordered_map<void*, std::string>;" << std::endl
 		<< "using name_module_map = std::unordered_map<std::string, boost::any>;" << std::endl
 		<< "using dataobject_name_map = std::unordered_map<void*, std::string>;" << std::endl
-		<< "using name_dataobject_map = std::unordered_map<std::string, boost::any>;" << std::endl
+		<< "using name_dataobject_map = std::unordered_map<std::string, dataobjects>;" << std::endl
 		<< "using registerlink_map = std::unordered_map<std::string, std::function<void(std::string, boost::any, boost::any)>>;" << std::endl
 		<< "using unregisterlink_map = std::unordered_map<std::string, std::function<void(std::string, boost::any)>>;" << std::endl
-		<< "using doserialize_map = std::unordered_map<std::string, Asm::serializeFnct>;" << std::endl
-		<< "using dodeserialize_map = std::unordered_map<std::string, Asm::deserializeFnct>;" << std::endl
 		<< "using print_module_map = std::map<std::string, std::string>;" << std::endl
 		<< std::endl
 		<< "extern const module_name_map module_names;" << std::endl
 		<< "extern const name_module_map modules;" << std::endl
 		<< "extern const dataobject_name_map do_names;" << std::endl
-		<< "extern const name_dataobject_map dos;" << std::endl
 		<< "extern const registerlink_map set_links;" << std::endl
 		<< "extern const unregisterlink_map clear_links;" << std::endl
-		<< "extern const doserialize_map do_serialize;" << std::endl
-		<< "extern const dodeserialize_map do_deserialize;" << std::endl
-		<< "extern const print_module_map print_modules;" << std::endl;
+		<< "extern const print_module_map print_modules;" << std::endl
+		<< "extern const name_dataobject_map dataobject_map;";
 
 	fs.close();
 
@@ -110,13 +146,13 @@ int main(int argc, const char **argv)
 	}
 	fs << "};" << std::endl << std::endl;
 
-	fs << "const name_dataobject_map dos" << std::endl << "{" << std::endl;
+	fs << "const name_dataobject_map dataobject_map" << std::endl << "{" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		auto range = DOs.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", &" + ModuleInstance.first + "." + it->second.first + "}," << std::endl;
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", " + ModuleInstance.first + "." + it->second.first + "}," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;
@@ -152,30 +188,6 @@ int main(int argc, const char **argv)
 		for (auto it = range.first; it != range.second; ++it)
 		{
 			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](std::string name, boost::any a) {" + ModuleInstance.first + "." + it->second.first + ".clear(name, a); } }," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
-
-	fs << "const doserialize_map do_serialize" << std::endl << "{" << std::endl;;
-
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = DOs.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator) {" + ModuleInstance.first + "." + it->second.first + ".serialize(value, allocator); } }," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
-
-	fs << "const dodeserialize_map do_deserialize" << std::endl << "{" << std::endl;;
-
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = DOs.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](rapidjson::Value& value) {" + ModuleInstance.first + "." + it->second.first + ".deserialize(value); } }," << std::endl;
 		}
 	}
 	fs << "};" << std::endl << std::endl;

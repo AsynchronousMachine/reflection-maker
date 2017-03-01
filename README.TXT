@@ -17,7 +17,7 @@ Beispiel:
 In 'directory' ist der absolute Pfad einzutragen, in der die unter 'file' angegebene Datei liegt.
 map_maker kompiliert die Datei mit dem clang Compiler.
 'command' ist das benötigte Konsolenkommando zum Kompilieren. Die Angaben müssen gemäß den Clang-Regeln erfolgen.
-Es können auch mehrere Kommandos definiert werden
+Es können auch mehrere Kommandos definiert werden.
 
 Der Aufruf in der Konsole lautet dann (map_maker benötigt als einzigen Startparameter 'file' als Referenz):
 ./map_maker global_instances.h
