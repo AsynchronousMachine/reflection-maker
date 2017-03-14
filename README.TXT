@@ -10,7 +10,7 @@ Beispiel:
   {
     'directory': '/home/Workspace/Finalconcept-reflection-maker',
     'file': 'global_instances.h',	
-    'command': 'clang++.exe global_instances.h -o global_instances.obj -std=c++14  -I/usr/lib/llvm-3.9/lib/clang/3.9.0/include '
+    'command': 'clang++.exe -xc++ global_instances.h -o global_instances.obj -std=c++14  -I/usr/lib/llvm-3.9/lib/clang/3.9.0/include '
   }
 ]
 
