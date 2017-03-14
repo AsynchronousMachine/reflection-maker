@@ -25,6 +25,8 @@ std::map<std::string, std::string> ModuleInstances; // key: variable, value: mod
 class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback
 {
 public:
+	MapMaker() : printingPolicy(getLangOptions()) {}
+
 	void run(const clang::ast_matchers::MatchFinder::MatchResult &Result) override
 	{
 		if (const clang::RecordDecl *rd = Result.Nodes.getNodeAs<clang::RecordDecl>("moduleClass"))
@@ -35,12 +37,22 @@ public:
 			}
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("DO")) {
-			DOs.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString()));
+			DOs.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString(printingPolicy)));
 		}
 		else if (const clang::FieldDecl *fd = Result.Nodes.getNodeAs<clang::FieldDecl>("link")) {
-			Links.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString()));
+			Links.emplace(fd->getParent()->getNameAsString(), make_pair(fd->getNameAsString(), fd->getType().getAsString(printingPolicy)));
 		}
 	}
+
+private:
+	static clang::LangOptions getLangOptions()
+	{
+		clang::LangOptions langOptions;
+		langOptions.Bool = true;
+		return langOptions;
+	}
+
+	clang::PrintingPolicy printingPolicy;
 };
 
 static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
