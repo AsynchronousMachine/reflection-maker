@@ -4,6 +4,7 @@
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <llvm/Support/CommandLine.h>
+#include <set>
 #include <vector>
 #include <utility>
 #include <string>
@@ -13,14 +14,17 @@
 using namespace clang::ast_matchers;
 
 auto DOFieldMatcher = fieldDecl(isPublic(), hasType(recordDecl(hasName("DataObject")))).bind("DO");
-auto LinkFieldMatcher = fieldDecl(isPublic(), hasType(recordDecl(hasName("Link")))).bind("link");
+auto LinkFieldMatcher = fieldDecl(isPublic(), hasType(recordDecl(hasName("LinkObject")))).bind("link");
 auto ModuleClassMatcher = cxxRecordDecl(anyOf(has(DOFieldMatcher), has(LinkFieldMatcher))).bind("moduleClass");
 auto ModuleInstanceMatcher = varDecl(hasType(ModuleClassMatcher)).bind("moduleInstance");
 
-//map should be sorted for print_modules output
 std::multimap<std::string, std::pair<std::string, std::string>> DOs; // key: module class name, value: DO as pair of instance name and datatype
 std::multimap<std::string, std::pair<std::string, std::string>> Links; // key: module class name, value: link as pair of instance name and datatype
+//map should be sorted for print_modules output
 std::map<std::string, std::string> ModuleInstances; // key: variable, value: module class name
+std::set<std::string> DOSet;
+std::set<std::string> LinkSet;
+
 
 class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback
 {
@@ -60,6 +64,50 @@ static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
 
 int main(int argc, const char **argv)
 {
+	std::fstream fs;
+
+	 /**
+     * create needed files for clang compiling process
+     */
+
+	//asm/maker_do.hpp
+	fs.open("asm/maker_do.hpp", std::fstream::out);
+
+	fs << "#pragma once" << std::endl << std::endl
+		<< "#include <boost/variant.hpp>" << std::endl << std::endl
+		<< "#include \"dataobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
+
+		<< "namespace Asm {" << std::endl
+		<< "\tusing data_variant = boost::variant<" << std::endl
+		<< "\t\tEmptyDataobject&" << std::endl
+		<< "\t>;" << std::endl
+		<< "}" << std::endl;
+
+	fs.close();
+
+
+	//asm/maker_link.hpp
+	fs.open("asm/maker_link.hpp", std::fstream::out);
+
+	fs << "#pragma once" << std::endl << std::endl
+		<< "#include <boost/variant.hpp>" << std::endl << std::endl
+		<< "#include \"dataobject.hpp\"" << std::endl
+		<< "#include \"linkobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
+
+		<< "namespace Asm {" << std::endl
+		<< "\tusing link_variant = boost::variant<" << std::endl
+		<< "\t\tEmptyLinkObject&" << std::endl
+		<< "\t>;" << std::endl
+		<< "}" << std::endl;
+
+	fs.close();
+
+	/**
+     * clang processing
+     */
+	 
 	clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
 	clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
@@ -71,49 +119,39 @@ int main(int argc, const char **argv)
 
 	int Result = Tool.run(clang::tooling::newFrontendActionFactory(&Finder).get());
 
-	std::fstream fs;
 
-	fs.open("global_reflection.h", std::fstream::out);
+	 /**
+     * write maker generated files
+     */
+	 
+	//modules/maker_reflection.hpp
+	fs.open("modules/maker_reflection.hpp", std::fstream::out);
 
-	fs << "#pragma once" << std::endl
-		<< "#include \"asm.hpp\"" << std::endl
+	fs << "#pragma once" << std::endl << std::endl
+		<< "#include \"../asm/asm.hpp\"" << std::endl
 		<< std::endl
-		<< "using module_name_map = std::unordered_map<void*, std::string>;" << std::endl
-		<< "using name_module_map = std::unordered_map<std::string, boost::any>;" << std::endl
-		<< "using dataobject_name_map = std::unordered_map<void*, std::string>;" << std::endl
-		<< "using name_dataobject_map = std::unordered_map<std::string, boost::any>;" << std::endl
-		<< "using registerlink_map = std::unordered_map<std::string, std::function<void(std::string, boost::any, boost::any)>>;" << std::endl
-		<< "using unregisterlink_map = std::unordered_map<std::string, std::function<void(std::string, boost::any)>>;" << std::endl
-		<< "using doserialize_map = std::unordered_map<std::string, Asm::serializeFnct>;" << std::endl
-		<< "using dodeserialize_map = std::unordered_map<std::string, Asm::deserializeFnct>;" << std::endl
+		<< "using id_string_map = std::unordered_map<void*, std::string>;" << std::endl
+		<< "using name_dataobject_map = std::unordered_map<std::string, Asm::data_variant>;" << std::endl
+		<< "using name_link_map = std::unordered_map<std::string, Asm::link_variant>;" << std::endl
 		<< "using print_module_map = std::map<std::string, std::string>;" << std::endl
 		<< std::endl
-		<< "extern const module_name_map module_names;" << std::endl
-		<< "extern const name_module_map modules;" << std::endl
-		<< "extern const dataobject_name_map do_names;" << std::endl
-		<< "extern const name_dataobject_map dos;" << std::endl
-		<< "extern const registerlink_map set_links;" << std::endl
-		<< "extern const unregisterlink_map clear_links;" << std::endl
-		<< "extern const doserialize_map do_serialize;" << std::endl
-		<< "extern const dodeserialize_map do_deserialize;" << std::endl
+		<< "extern const id_string_map module_name;" << std::endl
+		<< "extern const id_string_map do_names;" << std::endl
+		<< "extern const name_dataobject_map name_dataobjects;" << std::endl
+		<< "extern const name_link_map name_links;" << std::endl
 		<< "extern const print_module_map print_modules;" << std::endl;
 
 	fs.close();
 
-	fs.open("global_reflection.cpp", std::fstream::out);
+	//modules/maker_reflection.cpp
+	fs.open("modules/maker_reflection.cpp", std::fstream::out);
 
-	fs << "#include \"global_reflection.h\"" << std::endl << std::endl;
-	fs << "const name_module_map modules" << std::endl << "{" << std::endl;
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "\", &" + ModuleInstance.first + "}";
-		fs << ",";
-		fs << std::endl;
-	}
-	fs << "};" << std::endl << std::endl;
+	fs << "#include \"global_modules.hpp\"" << std::endl;
+	fs << "#include \"maker_reflection.hpp\"" << std::endl;
+
 
 	fs << "// Get out the module name for humans" << std::endl;
-	fs << "const module_name_map module_names" << std::endl << "{" << std::endl;
+	fs << "const id_string_map module_name" << std::endl << "{" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		fs << "\t{&" + ModuleInstance.first + ", \"" + ModuleInstance.second + "." + ModuleInstance.first + "\"}";
@@ -122,19 +160,9 @@ int main(int argc, const char **argv)
 	}
 	fs << "};" << std::endl << std::endl;
 
-	fs << "const name_dataobject_map dos" << std::endl << "{" << std::endl;
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = DOs.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", &" + ModuleInstance.first + "." + it->second.first + "}," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
 
 	fs << "// Get out the DO name for humans" << std::endl;
-	fs << "const dataobject_name_map do_names" << std::endl << "{" << std::endl;
+	fs << "const id_string_map do_names" << std::endl << "{" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		auto range = DOs.equal_range(ModuleInstance.second);
@@ -145,54 +173,9 @@ int main(int argc, const char **argv)
 	}
 	fs << "};" << std::endl << std::endl;
 
-	fs << "const registerlink_map set_links" << std::endl << "{" << std::endl;
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = Links.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](std::string name, boost::any a1, boost::any a2) {" + ModuleInstance.first + "." + it->second.first + ".set(name, a1, a2); } }," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
-
-
-	fs << "const unregisterlink_map clear_links" << std::endl << "{" << std::endl;;
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = Links.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](std::string name, boost::any a) {" + ModuleInstance.first + "." + it->second.first + ".clear(name, a); } }," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
-
-	fs << "const doserialize_map do_serialize" << std::endl << "{" << std::endl;;
-
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = DOs.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator) {" + ModuleInstance.first + "." + it->second.first + ".serialize(value, allocator); } }," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
-
-	fs << "const dodeserialize_map do_deserialize" << std::endl << "{" << std::endl;;
-
-	for (auto &ModuleInstance : ModuleInstances)
-	{
-		auto range = DOs.equal_range(ModuleInstance.second);
-		for (auto it = range.first; it != range.second; ++it)
-		{
-			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", [](rapidjson::Value& value) {" + ModuleInstance.first + "." + it->second.first + ".deserialize(value); } }," << std::endl;
-		}
-	}
-	fs << "};" << std::endl << std::endl;
 
 	//map for sorted order
+	fs << "// Get out by name all modules, all their dataobjects with type and their links for humans" << std::endl;
 	fs << "const print_module_map print_modules" << std::endl << "{" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
@@ -213,6 +196,79 @@ int main(int argc, const char **argv)
 		fs << "\"}," << std::endl;
 	}
 	fs << "};" << std::endl << std::endl;
+
+
+	fs << "const name_dataobject_map name_dataobjects" << std::endl << "{" << std::endl;
+	for (auto &ModuleInstance : ModuleInstances)
+	{
+		auto range = DOs.equal_range(ModuleInstance.second);
+		for (auto it = range.first; it != range.second; ++it)
+		{
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", " + ModuleInstance.first + "." + it->second.first + "}," << std::endl;
+			DOSet.insert(it->second.second);
+		}
+	}
+	fs << "};" << std::endl << std::endl;
+
+
+	fs << "const name_link_map name_links" << std::endl << "{" << std::endl;
+	for (auto &ModuleInstance : ModuleInstances)
+	{
+		auto range = Links.equal_range(ModuleInstance.second);
+		for (auto it = range.first; it != range.second; ++it)
+		{
+			fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", " + ModuleInstance.first + "." + it->second.first + "}," << std::endl;
+			LinkSet.insert(it->second.second);
+		}
+	}
+	fs << "};" << std::endl << std::endl;
+
+	fs.close();
+
+
+	//asm/maker_do.hpp
+	fs.open("asm/maker_do.hpp", std::fstream::out);
+
+	fs << "#pragma once" << std::endl << std::endl
+		<< "#include <boost/variant.hpp>" << std::endl << std::endl
+		<< "#include \"dataobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
+
+		<< "namespace Asm {" << std::endl
+		<< "\tusing data_variant = boost::variant<" << std::endl
+		<< "\t\tEmptyDataobject&";
+
+	for (const std::string type : DOSet)
+	{
+		fs << ", " << std::endl << "\t\t" << type << "&";
+	}
+
+	fs << std::endl << "\t>;" << std::endl
+		<< "}" << std::endl;
+
+	fs.close();
+
+
+	//asm/maker_link.hpp
+	fs.open("asm/maker_link.hpp", std::fstream::out);
+
+	fs << "#pragma once" << std::endl << std::endl
+		<< "#include <boost/variant.hpp>" << std::endl << std::endl
+		<< "#include \"dataobject.hpp\"" << std::endl
+		<< "#include \"linkobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
+
+		<< "namespace Asm {" << std::endl
+		<< "\tusing link_variant = boost::variant<" << std::endl
+		<< "\t\tEmptyLinkObject&";
+
+	for (const std::string type : LinkSet)
+	{
+		fs << ", " << std::endl << "\t\t" << type << "&";
+	}
+
+	fs << std::endl << "\t>;" << std::endl
+		<< "}" << std::endl;
 
 	fs.close();
 
