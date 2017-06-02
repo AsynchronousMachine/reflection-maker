@@ -9,6 +9,7 @@
 #include <utility>
 #include <string>
 #include <fstream>
+#include <experimental/filesystem>
 
 // see AST matcher reference for available macros at http://clang.llvm.org/docs/LibASTMatchersReference.html
 using namespace clang::ast_matchers;
@@ -18,9 +19,9 @@ auto LinkFieldMatcher = fieldDecl(isPublic(), hasType(recordDecl(hasName("LinkOb
 auto ModuleClassMatcher = cxxRecordDecl(anyOf(has(DOFieldMatcher), has(LinkFieldMatcher))).bind("moduleClass");
 auto ModuleInstanceMatcher = varDecl(hasType(ModuleClassMatcher)).bind("moduleInstance");
 
+//map should be sorted for print_modules output
 std::multimap<std::string, std::pair<std::string, std::string>> DOs; // key: module class name, value: DO as pair of instance name and datatype
 std::multimap<std::string, std::pair<std::string, std::string>> Links; // key: module class name, value: link as pair of instance name and datatype
-//map should be sorted for print_modules output
 std::map<std::string, std::string> ModuleInstances; // key: variable, value: module class name
 std::set<std::string> DOSet;
 std::set<std::string> LinkSet;
@@ -64,50 +65,49 @@ static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
 
 int main(int argc, const char **argv)
 {
+
+	std::experimental::filesystem::create_directory("maker");
+
 	std::fstream fs;
 
-	 /**
-     * create needed files for clang compiling process
-     */
+	//create needed files for compiling process
+	//maker/maker_do.hpp
+	fs.open("maker/maker_do.hpp", std::fstream::out);
 
-	//asm/maker_do.hpp
-	fs.open("asm/maker_do.hpp", std::fstream::out);
-
-	fs << "#pragma once" << std::endl << std::endl
-		<< "#include <boost/variant.hpp>" << std::endl << std::endl
-		<< "#include \"dataobject.hpp\"" << std::endl
-		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
-
+	fs << "#pragma once" << std::endl
+		<< std::endl
+		<< "#include <boost/variant.hpp>" << std::endl 
+		<< std::endl
+		<< "#include \"../asm/dataobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
+		<< std::endl
 		<< "namespace Asm {" << std::endl
-		<< "\tusing data_variant = boost::variant<" << std::endl
-		<< "\t\tEmptyDataobject&" << std::endl
-		<< "\t>;" << std::endl
+		<< "using data_variant = boost::variant<>;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
 
 
-	//asm/maker_link.hpp
-	fs.open("asm/maker_link.hpp", std::fstream::out);
+	//maker/maker_lo.hpp
+	fs.open("maker/maker_lo.hpp", std::fstream::out);
 
-	fs << "#pragma once" << std::endl << std::endl
-		<< "#include <boost/variant.hpp>" << std::endl << std::endl
-		<< "#include \"dataobject.hpp\"" << std::endl
-		<< "#include \"linkobject.hpp\"" << std::endl
-		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
-
+	fs << "#pragma once" << std::endl 
+		<< std::endl
+		<< "#include <boost/variant.hpp>" << std::endl 
+		<< std::endl
+		<< "#include \"../asm/dataobject.hpp\"" << std::endl
+		<< "#include \"../asm/linkobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
+		<< std::endl
 		<< "namespace Asm {" << std::endl
-		<< "\tusing link_variant = boost::variant<" << std::endl
-		<< "\t\tEmptyLinkObject&" << std::endl
-		<< "\t>;" << std::endl
+		<< "using link_variant = boost::variant<" << std::endl
+		<< "\tEmptyLinkObject&" << std::endl
+		<< ">;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
 
-	/**
-     * clang processing
-     */
-	 
+
 	clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
 	clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
@@ -120,14 +120,11 @@ int main(int argc, const char **argv)
 	int Result = Tool.run(clang::tooling::newFrontendActionFactory(&Finder).get());
 
 
-	 /**
-     * write maker generated files
-     */
-	 
-	//modules/maker_reflection.hpp
-	fs.open("modules/maker_reflection.hpp", std::fstream::out);
+	//maker/maker_reflection.hpp
+	fs.open("maker/maker_reflection.hpp", std::fstream::out);
 
-	fs << "#pragma once" << std::endl << std::endl
+	fs << "#pragma once" << std::endl 
+		<< std::endl
 		<< "#include \"../asm/asm.hpp\"" << std::endl
 		<< std::endl
 		<< "using id_string_map = std::unordered_map<void*, std::string>;" << std::endl
@@ -143,26 +140,27 @@ int main(int argc, const char **argv)
 
 	fs.close();
 
-	//modules/maker_reflection.cpp
-	fs.open("modules/maker_reflection.cpp", std::fstream::out);
+	//maker/maker_reflection.cpp
+	fs.open("maker/maker_reflection.cpp", std::fstream::out);
 
-	fs << "#include \"global_modules.hpp\"" << std::endl;
-	fs << "#include \"maker_reflection.hpp\"" << std::endl;
-
-
-	fs << "// Get out the module name for humans" << std::endl;
-	fs << "const id_string_map module_name" << std::endl << "{" << std::endl;
+	fs << "#include \"../modules/global_modules.hpp\"" << std::endl
+		<< "#include \"maker_reflection.hpp\"" << std::endl
+		<< std::endl
+		<< "// Get out the module name for humans" << std::endl
+		<< "const id_string_map module_name {" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		fs << "\t{&" + ModuleInstance.first + ", \"" + ModuleInstance.second + "." + ModuleInstance.first + "\"}";
 		fs << ",";
 		fs << std::endl;
 	}
-	fs << "};" << std::endl << std::endl;
+	fs << "};" << std::endl
+		<< std::endl
 
 
-	fs << "// Get out the DO name for humans" << std::endl;
-	fs << "const id_string_map do_names" << std::endl << "{" << std::endl;
+		<< "// Get out the DO name for humans" << std::endl
+		<< "const id_string_map do_names" << std::endl 
+		<< "{" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		auto range = DOs.equal_range(ModuleInstance.second);
@@ -171,12 +169,13 @@ int main(int argc, const char **argv)
 			fs << "\t{&" + ModuleInstance.first + "." + it->second.first + ", \"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\"}," << std::endl;
 		}
 	}
-	fs << "};" << std::endl << std::endl;
+	fs << "};" << std::endl
+		<< std::endl;
 
 
 	//map for sorted order
-	fs << "// Get out by name all modules, all their dataobjects with type and their links for humans" << std::endl;
-	fs << "const print_module_map print_modules" << std::endl << "{" << std::endl;
+	fs << "// Get out by name all modules, all their dataobjects with type and their links for humans" << std::endl
+		<< "const print_module_map print_modules {" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		fs << "\t{\"" + ModuleInstance.first + "\",\"" + ModuleInstance.second + "::" + ModuleInstance.first + "\\n";
@@ -195,10 +194,11 @@ int main(int argc, const char **argv)
 
 		fs << "\"}," << std::endl;
 	}
-	fs << "};" << std::endl << std::endl;
+	fs << "};" << std::endl
+		<< std::endl;
 
 
-	fs << "const name_dataobject_map name_dataobjects" << std::endl << "{" << std::endl;
+	fs << "const name_dataobject_map name_dataobjects {" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		auto range = DOs.equal_range(ModuleInstance.second);
@@ -208,10 +208,11 @@ int main(int argc, const char **argv)
 			DOSet.insert(it->second.second);
 		}
 	}
-	fs << "};" << std::endl << std::endl;
+	fs << "};" << std::endl
+		<< std::endl;
 
 
-	fs << "const name_link_map name_links" << std::endl << "{" << std::endl;
+	fs << "const name_link_map name_links {" << std::endl;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
 		auto range = Links.equal_range(ModuleInstance.second);
@@ -221,53 +222,63 @@ int main(int argc, const char **argv)
 			LinkSet.insert(it->second.second);
 		}
 	}
-	fs << "};" << std::endl << std::endl;
+	fs << "};" << std::endl 
+		<< std::endl;
 
 	fs.close();
 
 
-	//asm/maker_do.hpp
-	fs.open("asm/maker_do.hpp", std::fstream::out);
+	//maker/maker_do.hpp
+	fs.open("maker/maker_do.hpp", std::fstream::out);
 
-	fs << "#pragma once" << std::endl << std::endl
-		<< "#include <boost/variant.hpp>" << std::endl << std::endl
-		<< "#include \"dataobject.hpp\"" << std::endl
-		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
+	fs << "#pragma once" << std::endl 
+		<< std::endl
+		<< "#include <boost/variant.hpp>" << std::endl 
+		<< std::endl
+		<< "#include \"../asm/dataobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
+		<< std::endl
+		<< "namespace Asm {" << std::endl 
+		<< std::endl
+		<< "using data_variant = boost::variant<" << std::endl;
 
-		<< "namespace Asm {" << std::endl
-		<< "\tusing data_variant = boost::variant<" << std::endl
-		<< "\t\tEmptyDataobject&";
-
+	int counter = 0;
 	for (const std::string type : DOSet)
 	{
-		fs << ", " << std::endl << "\t\t" << type << "&";
+		fs << "                     " << type << "&";
+		if (++counter != DOSet.size())
+			fs << ", ";
+		fs << std::endl;
 	}
 
-	fs << std::endl << "\t>;" << std::endl
+	fs << "                     >;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
 
 
-	//asm/maker_link.hpp
-	fs.open("asm/maker_link.hpp", std::fstream::out);
+	//maker/maker_lo.hpp
+	fs.open("maker/maker_lo.hpp", std::fstream::out);
 
-	fs << "#pragma once" << std::endl << std::endl
-		<< "#include <boost/variant.hpp>" << std::endl << std::endl
-		<< "#include \"dataobject.hpp\"" << std::endl
-		<< "#include \"linkobject.hpp\"" << std::endl
-		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl << std::endl
-
+	fs << "#pragma once" << std::endl 
+		<< std::endl
+		<< "#include <boost/variant.hpp>" << std::endl 
+		<< std::endl
+		<< "#include \"../asm/dataobject.hpp\"" << std::endl
+		<< "#include \"../asm/linkobject.hpp\"" << std::endl
+		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
+		<< std::endl
 		<< "namespace Asm {" << std::endl
-		<< "\tusing link_variant = boost::variant<" << std::endl
-		<< "\t\tEmptyLinkObject&";
+		<< std::endl
+		<< "using link_variant = boost::variant<" << std::endl
+		<< "                     EmptyLinkObject&";
 
 	for (const std::string type : LinkSet)
 	{
-		fs << ", " << std::endl << "\t\t" << type << "&";
+		fs << ", " << std::endl << "                     " << type << "&";
 	}
 
-	fs << std::endl << "\t>;" << std::endl
+	fs << std::endl << "                     >;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
