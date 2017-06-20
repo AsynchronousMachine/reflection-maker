@@ -26,6 +26,18 @@ std::map<std::string, std::string> ModuleInstances; // key: variable, value: mod
 std::set<std::string> DOSet;
 std::set<std::string> LinkSet;
 
+void replaceAll(std::string &s, const std::string &search, const std::string &replace)
+{
+	for (size_t pos = 0; ; pos += replace.length()) {
+		// Locate the substring to replace
+		pos = s.find(search, pos);
+		if (pos == std::string::npos) break;
+		// Replace by erasing and inserting
+		s.erase(pos, search.length());
+		s.insert(pos, replace);
+	}
+};
+
 
 class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback
 {
@@ -143,8 +155,8 @@ int main(int argc, const char **argv)
 	//maker/maker_reflection.cpp
 	fs.open("maker/maker_reflection.cpp", std::fstream::out);
 
-	fs << "#include \"../modules/global_modules.hpp\"" << std::endl
-		<< "#include \"maker_reflection.hpp\"" << std::endl
+	fs << "#include \"maker_reflection.hpp\"" << std::endl
+		<< "#include \"../modules/global_modules.hpp\"" << std::endl
 		<< std::endl
 		<< "// Get out the module name for humans" << std::endl
 		<< "const id_string_map module_name {" << std::endl;
@@ -176,20 +188,24 @@ int main(int argc, const char **argv)
 	//map for sorted order
 	fs << "// Get out by name all modules, all their dataobjects with type and their links for humans" << std::endl
 		<< "const print_module_map print_modules {" << std::endl;
+	std::string type;
 	for (auto &ModuleInstance : ModuleInstances)
 	{
-		fs << "\t{\"" + ModuleInstance.first + "\",\"" + ModuleInstance.second + "::" + ModuleInstance.first + "\\n";
-
+		fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "\",\"";
 
 		auto range = DOs.equal_range(ModuleInstance.second);
 		for (auto it = range.first; it != range.second; ++it)
 		{
-			fs << "  |> " << it->second.second << " " << it->second.first + "\\n";
+			type = it->second.second;
+			replaceAll(type, "Asm::", "");
+			fs << "  |> " << type << " " << it->second.first + "\\n";
 		}
 		auto range2 = Links.equal_range(ModuleInstance.second);
 		for (auto it = range2.first; it != range2.second; ++it)
 		{
-			fs << "  |> " << it->second.second << " " << it->second.first + "\\n";
+			type = it->second.second;
+			replaceAll(type, "Asm::", "");
+			fs << "  |> " << type << " " << it->second.first + "\\n";
 		}
 
 		fs << "\"}," << std::endl;
