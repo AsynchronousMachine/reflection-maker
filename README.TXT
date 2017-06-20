@@ -1,16 +1,21 @@
-Todo nachdem map_maker mit make gebaut wurde:
+Verwendung von map_maker nach dem Bau mit make:
 
-map_maker in das Verzeichnis mit der global_instances Datei ablegen.
-Außerdem wird in diesem Verzeichnis eine Datei mit dem Namen "compile_commands.json" benötigt.
+Jedes Mal: Das submodul asm von github auschecken bzw. aktualisieren.
+
+Falls notwendig Änderung in "compile_commands.json" durchführen.
+- directory ist der Pfad, in den der map-maker ausgecheckt wurde.
+- evtl. compilerkommandos für asm anpassen, Libraries, Includes etc.
+
 Der Inhalt der Datei muss der JSON Compilation Database Format Specification entsprechen (siehe http://clang.llvm.org/docs/JSONCompilationDatabase.html).
 
 Beispiel:
 
 [
   {
-    'directory': '/home/Workspace/Finalconcept-reflection-maker',
-    'file': 'global_instances.h',	
-    'command': 'clang++.exe -xc++ global_instances.h -o global_instances.obj -std=c++14  -I/usr/lib/llvm-3.9/lib/clang/3.9.0/include '
+    'directory': '/home/Workspace/map-maker',
+    'file': 'asm/src/modules/global_modules.cpp',	
+    
+    'command': 'clang++ asm/src/modules/global_modules.cpp -o global_modules.obj -std=c++14 -DBOOST_HAS_THREADS -I/usr/lib/llvm-3.9/lib/clang/3.9.0/include'
   }
 ]
 
@@ -20,4 +25,5 @@ map_maker kompiliert die Datei mit dem clang Compiler.
 Es können auch mehrere Kommandos definiert werden
 
 Der Aufruf in der Konsole lautet dann (map_maker benötigt als einzigen Startparameter 'file' als Referenz):
-./map_maker global_instances.h
+./map_maker asm/src/modules/global_modules.cpp
+Dieser Befehl ist bereits in runmaker.sh hinterlegt, so dass nur noch dieses Skript aufgerufen werden muss.

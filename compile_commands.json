@@ -1,0 +1,7 @@
+[
+  {
+    'directory': '',
+    'file': 'asm/src/modules/global_modules.cpp',	
+    'command': 'clang++ asm/src/modules/global_modules.cpp -o global_modules.obj -std=c++14 -DBOOST_HAS_THREADS -I/usr/lib/llvm-3.9/lib/clang/3.9.0/include'
+  }
+]
