@@ -112,9 +112,7 @@ int main(int argc, const char **argv)
 		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
 		<< std::endl
 		<< "namespace Asm {" << std::endl
-		<< "using link_variant = boost::variant<" << std::endl
-		<< "\tEmptyLinkObject&" << std::endl
-		<< ">;" << std::endl
+		<< "using link_variant = boost::variant<>;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
@@ -258,7 +256,7 @@ int main(int argc, const char **argv)
 		<< std::endl
 		<< "using data_variant = boost::variant<" << std::endl;
 
-	int counter = 0;
+	unsigned int counter = 0;
 	for (const std::string type : DOSet)
 	{
 		fs << "                     " << type << "&";
@@ -268,7 +266,7 @@ int main(int argc, const char **argv)
 	}
 
 	fs << "                     >;" << std::endl
-		<< "}" << std::endl;
+	<< "}" << std::endl;
 
 	fs.close();
 
@@ -286,16 +284,19 @@ int main(int argc, const char **argv)
 		<< std::endl
 		<< "namespace Asm {" << std::endl
 		<< std::endl
-		<< "using link_variant = boost::variant<" << std::endl
-		<< "                     EmptyLinkObject&";
+		<< "using link_variant = boost::variant<" << std::endl;
 
+        counter = 0;
 	for (const std::string type : LinkSet)
 	{
-		fs << ", " << std::endl << "                     " << type << "&";
+		fs << "                     " << type << "&";
+                if (++counter != LinkSet.size())
+			fs << ", ";
+		fs << std::endl;
 	}
 
-	fs << std::endl << "                     >;" << std::endl
-		<< "}" << std::endl;
+	fs << "                     >;" << std::endl
+	<< "}" << std::endl;
 
 	fs.close();
 
