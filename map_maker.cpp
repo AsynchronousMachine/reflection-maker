@@ -78,13 +78,13 @@ static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
 int main(int argc, const char **argv)
 {
 
-	std::experimental::filesystem::create_directory("maker");
+	std::experimental::filesystem::create_directory("src/maker");
 
 	std::fstream fs;
 
 	//create needed files for compiling process
 	//maker/maker_do.hpp
-	fs.open("maker/maker_do.hpp", std::fstream::out);
+	fs.open("src/maker/maker_do.hpp", std::fstream::out);
 
 	fs << "#pragma once" << std::endl
 		<< std::endl
@@ -94,14 +94,14 @@ int main(int argc, const char **argv)
 		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
 		<< std::endl
 		<< "namespace Asm {" << std::endl
-		<< "using data_variant = boost::variant<>;" << std::endl
+		<< "using data_variant = boost::variant<Asm::DataObject<bool>&>;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
 
 
 	//maker/maker_lo.hpp
-	fs.open("maker/maker_lo.hpp", std::fstream::out);
+	fs.open("src/maker/maker_lo.hpp", std::fstream::out);
 
 	fs << "#pragma once" << std::endl 
 		<< std::endl
@@ -112,26 +112,13 @@ int main(int argc, const char **argv)
 		<< "#include \"../datatypes/global_datatypes.hpp\"" << std::endl 
 		<< std::endl
 		<< "namespace Asm {" << std::endl
-		<< "using link_variant = boost::variant<>;" << std::endl
+		<< "using link_variant = boost::variant<Asm::LinkObject<Asm::DataObject<bool>, Asm::DataObject<bool>>& >;" << std::endl
 		<< "}" << std::endl;
 
 	fs.close();
 
-
-	clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
-	clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
-
-	MapMaker Maker;
-	clang::ast_matchers::MatchFinder Finder;
-	Finder.addMatcher(DOFieldMatcher, &Maker);
-	Finder.addMatcher(LinkFieldMatcher, &Maker);
-	Finder.addMatcher(ModuleInstanceMatcher, &Maker);
-
-	int Result = Tool.run(clang::tooling::newFrontendActionFactory(&Finder).get());
-
-
 	//maker/maker_reflection.hpp
-	fs.open("maker/maker_reflection.hpp", std::fstream::out);
+	fs.open("src/maker/maker_reflection.hpp", std::fstream::out);
 
 	fs << "#pragma once" << std::endl 
 		<< std::endl
@@ -150,8 +137,19 @@ int main(int argc, const char **argv)
 
 	fs.close();
 
+	clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
+	clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+
+	MapMaker Maker;
+	clang::ast_matchers::MatchFinder Finder;
+	Finder.addMatcher(DOFieldMatcher, &Maker);
+	Finder.addMatcher(LinkFieldMatcher, &Maker);
+	Finder.addMatcher(ModuleInstanceMatcher, &Maker);
+
+	int Result = Tool.run(clang::tooling::newFrontendActionFactory(&Finder).get());
+
 	//maker/maker_reflection.cpp
-	fs.open("maker/maker_reflection.cpp", std::fstream::out);
+	fs.open("src/maker/maker_reflection.cpp", std::fstream::out);
 
 	fs << "#include \"maker_reflection.hpp\"" << std::endl
 		<< "#include \"../modules/global_modules.hpp\"" << std::endl
@@ -243,7 +241,7 @@ int main(int argc, const char **argv)
 
 
 	//maker/maker_do.hpp
-	fs.open("maker/maker_do.hpp", std::fstream::out);
+	fs.open("src/maker/maker_do.hpp", std::fstream::out);
 
 	fs << "#pragma once" << std::endl 
 		<< std::endl
@@ -272,7 +270,7 @@ int main(int argc, const char **argv)
 
 
 	//maker/maker_lo.hpp
-	fs.open("maker/maker_lo.hpp", std::fstream::out);
+	fs.open("src/maker/maker_lo.hpp", std::fstream::out);
 
 	fs << "#pragma once" << std::endl 
 		<< std::endl
