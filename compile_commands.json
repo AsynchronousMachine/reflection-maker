@@ -2,6 +2,6 @@
   {
     'directory': '/opt/Projects/AsynchronousMachine/reflection-maker',
     'file': 'asm/src/modules/global_modules.cpp',	
-    'command': 'clang++-3.9 asm/src/modules/global_modules.cpp -o global_modules.obj -std=c++1z -I/usr/lib/llvm-3.9/lib/clang/3.9.1/include'
+    'command': 'clang++-3.9 asm/src/modules/global_modules.cpp -o global_modules.obj -std=c++1z -I/usr/lib/llvm-3.9/lib/clang/3.9.1/include -Iasm/external/spdlog/include -Iasm/external/rapidjson/include'
   }
 ]
