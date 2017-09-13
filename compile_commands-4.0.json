@@ -1,0 +1,7 @@
+[
+  {
+    'directory': '/opt/Projects/AsynchronousMachine/reflection-maker',
+    'file': 'asm/src/modules/global_modules.cpp',	
+    'command': 'clang++-4.0 asm/src/modules/global_modules.cpp -o global_modules.obj -std=c++1z -I/usr/lib/llvm-4.0/lib/clang/4.0.0/include -Iasm/external/spdlog/include -Iasm/external/rapidjson/include'
+  }
+]
