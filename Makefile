@@ -8,13 +8,14 @@ TARGET_PLATFORM ?= linux
 TARGET          := map_maker
 STRIP           ?= strip -s
 ECHO            ?= echo
-CPPFLAGS        += -std=c++1z -Ofast -DTARGET_PLATFORM=$(TARGET_PLATFORM) -I/usr/lib/llvm-$(CLVERSION)/include -L/usr/lib/llvm-$(CLVERSION)/lib -lLLVM-$(CLVERSION)
+CPPFLAGS        += -std=c++11 -Ofast -DTARGET_PLATFORM=$(TARGET_PLATFORM) -I/usr/lib/llvm-$(CLVERSION)/include -L/usr/lib/llvm-$(CLVERSION)/lib -lLLVM-$(CLVERSION)
 CXX             = clang++-$(CLVERSION)
 
 .PHONY: help all clean
 
 help:
 	@$(ECHO) "Available targets are:"
+	@$(ECHO) "make clean"
 	@$(ECHO) "make all, if you want to compile with clang 3.9"
 	@$(ECHO) "make CLVERSION:=4.0 all, if you want to compile with clang 4.0"
 

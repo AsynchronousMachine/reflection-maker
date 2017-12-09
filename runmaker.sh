@@ -1,5 +1,3 @@
 #!/bin/sh
 
-# Enter directory asm and call ../runmaker.sh
-
-../map_maker src/modules/global_modules.cpp
+./map_maker asm/src/modules/global_modules.cpp
