@@ -1,5 +1,3 @@
-// g++ -std=c++11 map_maker.cpp -o map_maker -lclangAST -lclangASTMatchers
-// -lclangFrontend -lclangBasic -lLLVMSupport -lclangTooling
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <clang/Tooling/CommonOptionsParser.h>
@@ -71,14 +69,18 @@ class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback {
 };
 
 static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
-// static llvm::cl::extrahelp
-// CommonHelp(clang::tooling::CommonOptionsParser::HelpMessage);
+static llvm::cl::opt<std::string> PathToASM("asm", llvm::cl::desc("Path to ASM"), llvm::cl::Optional, llvm::cl::cat(MapMakerCategory));
 
-const std::string makerPath{"asm/src/maker"};
+std::string makerPath{"asm/src/maker"};
 
 int main(int argc, const char **argv) {
     clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
     clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+
+    if(PathToASM.getValue() != "") {
+        std::cout << "Path to ASM: " << PathToASM.getValue() << std::endl;
+        makerPath = PathToASM.getValue();
+    }
 
     clang::tooling::CompilationDatabase &cdb = OptionsParser.getCompilations();
 
@@ -88,11 +90,9 @@ int main(int argc, const char **argv) {
     for (auto f : cdb.getAllFiles())
         std::cout << "Compilations file: " << f << std::endl;
 
-    //std::vector<clang::tooling::CompileCommand> ccs = cdb.getAllCompileCommands();
     for (auto cc : cdb.getAllCompileCommands()) {
-        std::cout << "Compilations directory: " << cc.Directory << std::endl;
-        std::cout << "Compilations file name: " << cc.Filename << std::endl;
-        //std::cout << "Compilations output: " << cc.Output << std::endl;
+        std::cout << "Compilations command directory: " << cc.Directory << std::endl;
+        std::cout << "Compilations command file: " << cc.Filename << std::endl;
         for (auto cl : cc.CommandLine) {
             std::cout << "Compilations command line: " << cl << std::endl;
         }
@@ -101,7 +101,7 @@ int main(int argc, const char **argv) {
     MapMaker Maker;
     clang::ast_matchers::MatchFinder Finder;
 
-    std::experimental::filesystem::create_directory(makerPath);
+    std::experimental::filesystem::create_directories(makerPath);
 
     std::fstream fs;
 
