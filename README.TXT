@@ -1,10 +1,10 @@
-Verwendung von 'map_maker' nach dem Bauen mit make:
+Verwendung von "map_maker" nach dem Bauen mit make:
 
-Jedes Mal: Das submodul asm von github auschecken bzw. aktualisieren.
+Jedes Mal: Das Submodul "asm" auschecken oder ggfs. aktualisieren.
 
 Falls notwendig Änderung in "compile_commands-x.y.json" durchführen:
-- 'directory' ist der Pfad, in den der map-maker ausgecheckt wurde.
-- evtl. Compiler-Kommandos für 'asm' anpassen, Libraries, Includes etc.
+  - "directory" ist der Pfad, in dem der "map-maker" ausgecheckt wurde.
+  - evtl. Compiler-Kommandos für "asm" anpassen, Libraries, Includes etc.
 
 Der Inhalt der Datei muss der JSON Compilation Database Format Specification entsprechen (siehe http://clang.llvm.org/docs/JSONCompilationDatabase.html).
 
@@ -12,17 +12,22 @@ Beispiel:
 
 [
   {
-    'directory': '/home/Workspace/map-maker',
-    'file': 'asm/src/modules/global_modules.cpp',    
-    'command': 'clang++ asm/src/modules/global_modules.cpp -o global_modules.obj -std=c++14 -DBOOST_HAS_THREADS -I/usr/lib/llvm-3.9/lib/clang/3.9.0/include'
+    "directory": "/home/Workspace/map-maker",
+    "file": "asm/src/modules/global_modules.cpp",    
+    "command": "clang++ asm/src/modules/global_modules.cpp -o global_modules.obj -I/usr/lib/llvm-15/lib/clang/15.0.7/include
+                -Iasm/external/spdlog/include -Iasm/external/rapidjson/include"
   }
 ]
 
-- In 'directory' ist der absolute Pfad einzutragen, in der die unter 'file' angegebene Datei liegt.
-- 'map_maker' kompiliert die Datei mit dem Clang-Compiler.
-- 'command' ist das benötigte Konsolenkommando zum Kompilieren. Die Angaben müssen gemäß den Clang-Regeln erfolgen. Es können auch mehrere Kommandos definiert werden
+- In "directory" ist der absolute Pfad einzutragen, in der die unter "file" angegebene Datei liegt.
+- "map_maker" kompiliert die Datei mit dem Clang-Compiler.
+- "command" ist das benötigte Konsolenkommando zum Kompilieren. Die Angaben müssen gemäß den Clang Aufruf-Regeln erfolgen.
 
-Der Aufruf in der Konsole lautet dann (map_maker benötigt als einzigen Startparameter 'file' als Referenz):
-- ./map_maker asm/src/modules/global_modules.cpp
+Der Aufruf in der Konsole lautet dann ("map_maker" benötigt als einzigen Startparameter "file" als Referenz):
+  - "./map_maker asm/src/modules/global_modules.cpp"
 
-Dieser Befehl ist bereits in 'runmaker.sh' hinterlegt, so dass nur noch dieses Skript aufgerufen werden muss.
+Dieser Befehl ist bereits in "runmaker.sh" hinterlegt, so dass nur noch dieses Skript aufgerufen werden muss.
+Compiler-Fehler, die auf ein fehlendes Include-Verzeichnis hinweisen, können ignoriert werden (z.B. Boost, TBB, ...).
+
+Wenn alles fehlerfrei funktioniert sind im Verzeichnis "maker" (falls nicht vorhanden, wird es erstellt) die erzeugten Dateien für das Reflection und das Verzeichnis muss dann nach "asm/src" kopiert werden, so dass "asm/src/maker" dort erscheint.
+

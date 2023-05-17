@@ -71,20 +71,23 @@ class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback {
 static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
 static llvm::cl::opt<std::string> PathToASM("asm", llvm::cl::desc("Path to ASM"), llvm::cl::Optional, llvm::cl::cat(MapMakerCategory));
 
-std::string makerPath{"asm/src/maker"};
+std::string makerPath{"./maker"};
 
 int main(int argc, const char **argv) {
-    clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
-    clang::tooling::ClangTool Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+    llvm::Expected<clang::tooling::CommonOptionsParser> op = clang::tooling::CommonOptionsParser::create(argc, argv, MapMakerCategory);
 
+    clang::tooling::ClangTool Tool(op->getCompilations(), op->getSourcePathList());
+    
     if(PathToASM.getValue() != "") {
         std::cout << "Path to ASM: " << PathToASM.getValue() << std::endl;
         makerPath = PathToASM.getValue();
     }
 
-    clang::tooling::CompilationDatabase &cdb = OptionsParser.getCompilations();
+    // see compilation database reference for JSON commands
+    // https://clang.llvm.org/doxygen/JSONCompilationDatabase_8h_source.html    
+    clang::tooling::CompilationDatabase &cdb = op->getCompilations();
 
-    for (auto path : OptionsParser.getSourcePathList())
+    for (auto path : op->getSourcePathList())
         std::cout << "Compilations source path: " << path << std::endl;
 
     for (auto f : cdb.getAllFiles())
