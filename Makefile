@@ -2,13 +2,13 @@ LDLIBS          := -lclangTooling -lclangFrontendTool -lclangFrontend -lclangDri
                    -lclangParse -lclangSema -lclangStaticAnalyzerFrontend -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangAnalysis \
                    -lclangARCMigrate -lclangRewrite -lclangRewriteFrontend -lclangEdit -lclangASTMatchers -lclangAST -lclangLex -lclangBasic -lclang -lstdc++fs
 
-CLVERSION       ?= 4.0
+CLVERSION       ?= 10
 
 TARGET_PLATFORM ?= linux
 TARGET          := map_maker
 STRIP           ?= strip -s
 ECHO            ?= echo
-CPPFLAGS        += -std=c++11 -Ofast -DTARGET_PLATFORM=$(TARGET_PLATFORM) -I/usr/lib/llvm-$(CLVERSION)/include -L/usr/lib/llvm-$(CLVERSION)/lib -lLLVM-$(CLVERSION)
+CPPFLAGS        += -std=c++17 -Ofast -DTARGET_PLATFORM=$(TARGET_PLATFORM) -I/usr/lib/llvm-$(CLVERSION)/include -L/usr/lib/llvm-$(CLVERSION)/lib -lLLVM-$(CLVERSION)
 CXX             = clang++-$(CLVERSION)
 
 .PHONY: help all clean
@@ -16,7 +16,7 @@ CXX             = clang++-$(CLVERSION)
 help:
 	@$(ECHO) "Available targets are:"
 	@$(ECHO) "make clean"
-	@$(ECHO) "make all, if you want to compile with clang 4.0"
+	@$(ECHO) "make all, if you want to compile with clang 10"
 	@$(ECHO) "make CLVERSION:=3.9 all, if you want to compile with clang 3.9"
 
 all: $(TARGET)

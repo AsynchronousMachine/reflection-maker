@@ -71,7 +71,7 @@ class MapMaker : public clang::ast_matchers::MatchFinder::MatchCallback {
 static llvm::cl::OptionCategory MapMakerCategory("MapMaker options");
 static llvm::cl::opt<std::string> PathToASM("asm", llvm::cl::desc("Path to ASM"), llvm::cl::Optional, llvm::cl::cat(MapMakerCategory));
 
-std::string makerPath{"asm/src/maker"};
+std::string makerPath{"./maker"};
 
 int main(int argc, const char **argv) {
     clang::tooling::CommonOptionsParser OptionsParser(argc, argv, MapMakerCategory);
