@@ -110,13 +110,13 @@ int main(int argc, const char **argv) {
     fs.open(makerPath + std::string{"/maker_do.hpp"}, std::fstream::out);
     fs << "#pragma once" << std::endl
        << std::endl
-       << "#include <boost/variant.hpp>" << std::endl
+       << "#include <variant>" << std::endl
        << std::endl
        << "#include \"../asm/dataobject.hpp\"" << std::endl
        << "#include \"../datatypes/global_datatypes.hpp\"" << std::endl
        << std::endl
        << "namespace Asm {" << std::endl
-       << "using data_variant = boost::variant<Asm::DataObject<bool>&>;" << std::endl
+       << "using data_variant = std::variant<Asm::DataObject<bool>*>;" << std::endl
        << "}" << std::endl;
 
     fs.close();
@@ -125,7 +125,7 @@ int main(int argc, const char **argv) {
     fs.open(makerPath + std::string{"/maker_lo.hpp"}, std::fstream::out);
     fs << "#pragma once" << std::endl
        << std::endl
-       << "#include <boost/variant.hpp>" << std::endl
+       << "#include <variant>" << std::endl
        << std::endl
        << "#include \"../asm/dataobject.hpp\"" << std::endl
        << "#include \"../asm/linkobject.hpp\"" << std::endl
@@ -133,8 +133,8 @@ int main(int argc, const char **argv) {
        << std::endl
        << "namespace Asm {" << std::endl
        << "using link_variant = "
-          "boost::variant<Asm::LinkObject<Asm::DataObject<bool>, "
-          "Asm::DataObject<bool>>& >;"
+          "std::variant<Asm::LinkObject<Asm::DataObject<bool>, "
+          "Asm::DataObject<bool>>*>;"
        << std::endl
        << "}" << std::endl;
 
@@ -232,7 +232,7 @@ int main(int argc, const char **argv) {
     for (auto &ModuleInstance : ModuleInstances) {
         auto range = DOs.equal_range(ModuleInstance.second);
         for (auto it = range.first; it != range.second; ++it) {
-            fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", " + ModuleInstance.first + "." +
+            fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", &" + ModuleInstance.first + "." +
                       it->second.first + "},"
                << std::endl;
             DOSet.insert(it->second.second);
@@ -244,7 +244,7 @@ int main(int argc, const char **argv) {
     for (auto &ModuleInstance : ModuleInstances) {
         auto range = Links.equal_range(ModuleInstance.second);
         for (auto it = range.first; it != range.second; ++it) {
-            fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", " + ModuleInstance.first + "." +
+            fs << "\t{\"" + ModuleInstance.second + "." + ModuleInstance.first + "." + it->second.first + "\", &" + ModuleInstance.first + "." +
                       it->second.first + "},"
                << std::endl;
             LinkSet.insert(it->second.second);
@@ -259,18 +259,18 @@ int main(int argc, const char **argv) {
 
     fs << "#pragma once" << std::endl
        << std::endl
-       << "#include <boost/variant.hpp>" << std::endl
+       << "#include <variant>" << std::endl
        << std::endl
        << "#include \"../asm/dataobject.hpp\"" << std::endl
        << "#include \"../datatypes/global_datatypes.hpp\"" << std::endl
        << std::endl
        << "namespace Asm {" << std::endl
        << std::endl
-       << "using data_variant = boost::variant<" << std::endl;
+       << "using data_variant = std::variant<" << std::endl;
 
     unsigned int counter = 0;
     for (const std::string type : DOSet) {
-        fs << "                     " << type << "&";
+        fs << "                     " << type << "*";
         if (++counter != DOSet.size())
             fs << ", ";
         fs << std::endl;
@@ -285,7 +285,7 @@ int main(int argc, const char **argv) {
 
     fs << "#pragma once" << std::endl
        << std::endl
-       << "#include <boost/variant.hpp>" << std::endl
+       << "#include <variant>" << std::endl
        << std::endl
        << "#include \"../asm/dataobject.hpp\"" << std::endl
        << "#include \"../asm/linkobject.hpp\"" << std::endl
@@ -293,11 +293,11 @@ int main(int argc, const char **argv) {
        << std::endl
        << "namespace Asm {" << std::endl
        << std::endl
-       << "using link_variant = boost::variant<" << std::endl;
+       << "using link_variant = std::variant<" << std::endl;
 
     counter = 0;
     for (const std::string type : LinkSet) {
-        fs << "                     " << type << "&";
+        fs << "                     " << type << "*";
         if (++counter != LinkSet.size())
             fs << ", ";
         fs << std::endl;

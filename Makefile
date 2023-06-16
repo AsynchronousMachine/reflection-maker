@@ -27,4 +27,4 @@ $(TARGET): *.cpp
 	$(STRIP) $@
 
 clean:
-	-rm -fr $(TARGET) *.dwo compile_commands.json map_maker
+	-rm -fr $(TARGET) *.dwo compile_commands.json map_maker ./maker
