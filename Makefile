@@ -5,12 +5,11 @@ LDLIBS          := -lclangTooling -lclangFrontendTool -lclangFrontend -lclangDri
                    
 CLVERSION       ?= 15
 
-TARGET_PLATFORM ?= linux
+TARGET_PLATFORM = linux
 TARGET          = map_maker
 STRIP           = strip -s
 ECHO            = echo
 CPPFLAGS        += -v -Ofast -DTARGET_PLATFORM=$(TARGET_PLATFORM) -I/usr/lib/llvm-$(CLVERSION)/include -L/usr/lib/llvm-$(CLVERSION)/lib -lLLVM-$(CLVERSION)
-
 CXX             = clang++-$(CLVERSION)
 
 .PHONY: help all clean
