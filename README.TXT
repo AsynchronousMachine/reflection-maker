@@ -12,10 +12,9 @@ Beispiel:
 
 [
   {
-    "directory": "/home/Workspace/map-maker",
+    "directory": "/opt/Projects/AsynchronousMachine/reflection-maker",
     "file": "asm/src/modules/global_modules.cpp",    
-    "command": "clang++ asm/src/modules/global_modules.cpp -o global_modules.obj -I/usr/lib/llvm-15/lib/clang/15.0.7/include
-                -Iasm/external/spdlog/include -Iasm/external/rapidjson/include"
+    "command": "clang++ asm/src/modules/global_modules.cpp -o global_modules.obj -I/usr/lib/llvm-15/lib/clang/15.0.7/include -I/opt/local/include"
   }
 ]
 
@@ -27,7 +26,6 @@ Der Aufruf in der Konsole lautet dann ("map_maker" benötigt als einzigen Startp
   - "./map_maker asm/src/modules/global_modules.cpp"
 
 Dieser Befehl ist bereits in "runmaker.sh" hinterlegt, so dass nur noch dieses Skript aufgerufen werden muss.
-Compiler-Fehler, die auf ein fehlendes Include-Verzeichnis hinweisen, können ignoriert werden (z.B. Boost, TBB, ...).
 
 Wenn alles fehlerfrei funktioniert sind im Verzeichnis "maker" (falls nicht vorhanden, wird es erstellt) die erzeugten Dateien für das Reflection und das Verzeichnis muss dann nach "asm/src" kopiert werden, so dass "asm/src/maker" dort erscheint.
 
